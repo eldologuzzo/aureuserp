@@ -155,13 +155,13 @@ class ProductInfolist
                 TextEntry::make('price')
                     ->label(__('products::filament/resources/product.infolist.sections.pricing.entries.price'))
                     ->placeholder('—')
-                    ->money()
+                    ->formatStateUsing(fn ($state): string => money((float) $state))
                     ->suffix(fn ($record): string => $record->uom ? ' / '.$record->uom->name : ''),
 
                 TextEntry::make('cost')
                     ->label(__('products::filament/resources/product.infolist.sections.pricing.entries.cost'))
                     ->placeholder('—')
-                    ->money()
+                    ->formatStateUsing(fn ($state): string => money((float) $state))
                     ->suffix(fn ($record): string => $record->uomPO ? ' / '.$record->uomPO->name : ''),
             ]);
     }

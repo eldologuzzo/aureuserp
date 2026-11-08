@@ -114,10 +114,10 @@ class ProductsTable
                             Radio::make('format')
                                 ->label(__('products::filament/resources/product.table.bulk-actions.print.form.fields.format'))
                                 ->options([
-                                    'dymo'       => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.dymo'),
-                                    '2x7_price'  => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.2x7_price'),
-                                    '4x7_price'  => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.4x7_price'),
-                                    '4x12'       => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.4x12'),
+                                    'dymo' => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.dymo'),
+                                    '2x7_price' => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.2x7_price'),
+                                    '4x7_price' => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.4x7_price'),
+                                    '4x12' => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.4x12'),
                                     '4x12_price' => __('products::filament/resources/product.table.bulk-actions.print.form.fields.format-options.4x12_price'),
                                 ])
                                 ->default('2x7_price')
@@ -125,13 +125,13 @@ class ProductsTable
                         ])
                         ->action(function (array $data, $records) {
                             $pdf = Pdf::loadView('products::filament.resources.products.actions.print', [
-                                'records'  => $records,
+                                'records' => $records,
                                 'quantity' => $data['quantity'],
-                                'format'   => $data['format'],
+                                'format' => $data['format'],
                             ]);
 
                             $paperSize = match ($data['format']) {
-                                'dymo'  => [0, 0, 252.2, 144],
+                                'dymo' => [0, 0, 252.2, 144],
                                 default => 'a4',
                             };
 
@@ -237,12 +237,12 @@ class ProductsTable
                 ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('price')
                 ->label(__('products::filament/resources/product.table.columns.price'))
-                ->money()
+                ->formatStateUsing(fn ($state): string => money((float) $state))
                 ->suffix(fn (Product $record): string => $record->uom ? ' / '.$record->uom->name : '')
                 ->sortable(),
             TextColumn::make('cost')
                 ->label(__('products::filament/resources/product.table.columns.cost'))
-                ->money()
+                ->formatStateUsing(fn ($state): string => money((float) $state))
                 ->suffix(fn (Product $record): string => $record->uomPO ? ' / '.$record->uomPO->name : '')
                 ->sortable(),
             TextColumn::make('category.name')
