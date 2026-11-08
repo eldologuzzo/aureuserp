@@ -3,7 +3,9 @@
 namespace Webkul\PluginManager\Console\Commands;
 
 use Closure;
+use Filament\Facades\Filament;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -159,6 +161,8 @@ class InstallCommand extends Command
             }
         }
 
+        logger()->info('Plugin migrations and seeders finished', ['plugin' => $this->package->name]);
+
         $package = $this->package->updateOrCreate();
 
         foreach ($this->package->dependencies as $dependencyName) {
@@ -173,9 +177,13 @@ class InstallCommand extends Command
 
         $this->regenerateAdminPanelPermissions();
 
+        logger()->info('Plugin permissions synchronized', ['plugin' => $this->package->name]);
+
         $this->info('⚙️ Refreshing application caches so the plugin navigation is reflected...');
 
         Package::refreshPluginCaches();
+
+        logger()->info('Plugin caches refreshed', ['plugin' => $this->package->name]);
 
         $this->info("🎉 Package <comment>{$this->package->shortName()}</comment> has been installed!");
     }
@@ -263,7 +271,11 @@ class InstallCommand extends Command
                 continue;
             }
 
-            $fullPath = $this->package->basePath("../database/migrations/{$migration}.php");
+            $fullPath = $this->package->basePath("database/migrations/{$migration}.php");
+
+            if (! is_file($fullPath)) {
+                $fullPath = $this->package->basePath("../database/migrations/{$migration}.php");
+            }
 
             $path = Str::after($fullPath, base_path().DIRECTORY_SEPARATOR);
 
@@ -294,7 +306,11 @@ class InstallCommand extends Command
                 continue;
             }
 
-            $fullPath = $this->package->basePath("../database/settings/{$setting}.php");
+            $fullPath = $this->package->basePath("database/settings/{$setting}.php");
+
+            if (! is_file($fullPath)) {
+                $fullPath = $this->package->basePath("../database/settings/{$setting}.php");
+            }
 
             $path = Str::after($fullPath, base_path().DIRECTORY_SEPARATOR);
 
@@ -458,15 +474,35 @@ class InstallCommand extends Command
         $this->info('⚙️ Refreshing access controls for the admin panel...');
 
         try {
-            $phpPath = $this->getPhpExecutablePath();
+            if (Package::isEmbeddedMobileRuntime()) {
+                Artisan::call('optimize:clear');
 
-            $php = escapeshellarg($phpPath);
+                foreach (Filament::getPanels() as $panel) {
+                    foreach ($panel->getPlugins() as $pluginId => $plugin) {
+                        if (Package::isPluginInstalled($pluginId)) {
+                            $plugin->register($panel);
+                        }
+                    }
+                }
 
-            $artisan = escapeshellarg(base_path('artisan'));
+                $output = [];
 
-            $cmd = $this->buildTimeoutCommand(60, "$php $artisan shield:generate --all --option=permissions --panel=admin 2>&1");
+                $exitCode = $this->call('shield:generate', [
+                    '--all'    => true,
+                    '--option' => 'permissions',
+                    '--panel'  => 'admin',
+                ]);
+            } else {
+                $phpPath = $this->getPhpExecutablePath();
 
-            exec($cmd, $output, $exitCode);
+                $php = escapeshellarg($phpPath);
+
+                $artisan = escapeshellarg(base_path('artisan'));
+
+                $cmd = $this->buildTimeoutCommand(60, "$php $artisan shield:generate --all --option=permissions --panel=admin 2>&1");
+
+                exec($cmd, $output, $exitCode);
+            }
 
             if ($exitCode === 124) {
                 throw new RuntimeException('Permission generation timed out after 60 seconds.');

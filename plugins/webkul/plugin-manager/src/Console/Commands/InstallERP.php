@@ -72,6 +72,8 @@ class InstallERP extends Command
 
         $this->info('🚀 Starting ERP System Installation...');
 
+        $this->prepareDatabase();
+
         $this->runMigrations();
 
         $this->generateRolesAndPermissions();
@@ -191,6 +193,28 @@ class InstallERP extends Command
         if (File::exists($filePath)) {
             File::delete($filePath);
         }
+    }
+
+    /**
+     * Create the SQLite database file when the selected connection needs one.
+     */
+    protected function prepareDatabase(): void
+    {
+        $connection = config('database.default');
+
+        if (config("database.connections.{$connection}.driver") !== 'sqlite') {
+            return;
+        }
+
+        $database = config("database.connections.{$connection}.database");
+
+        if ($database === ':memory:' || File::exists($database)) {
+            return;
+        }
+
+        File::ensureDirectoryExists(dirname($database));
+
+        File::put($database, '');
     }
 
     /**

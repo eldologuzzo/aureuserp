@@ -17,6 +17,7 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema as DBSchema;
 use RuntimeException;
@@ -119,21 +120,38 @@ class PluginsTable
                             DB::beginTransaction();
 
                             try {
-                                $phpPath = static::getPhpExecutablePath();
+                                if (Package::isEmbeddedMobileRuntime()) {
+                                    Package::registerEmbeddedConsoleCommands();
 
-                                $php = escapeshellarg($phpPath);
+                                    logger()->info('Embedded plugin installation started', ['plugin' => $record->name]);
 
-                                $artisan = escapeshellarg(base_path('artisan'));
+                                    $exitCode = Artisan::call("{$record->name}:install", [
+                                        '--no-interaction' => true,
+                                    ]);
 
-                                $commandName = escapeshellarg("{$record->name}:install");
+                                    logger()->info('Embedded plugin installation command finished', [
+                                        'plugin'   => $record->name,
+                                        'exitCode' => $exitCode,
+                                    ]);
 
-                                $cmd = static::buildTimeoutCommand(300, "$php $artisan $commandName --no-interaction 2>&1");
+                                    $output = [Artisan::output()];
+                                } else {
+                                    $phpPath = static::getPhpExecutablePath();
 
-                                $output = [];
+                                    $php = escapeshellarg($phpPath);
 
-                                $exitCode = 0;
+                                    $artisan = escapeshellarg(base_path('artisan'));
 
-                                exec($cmd, $output, $exitCode);
+                                    $commandName = escapeshellarg("{$record->name}:install");
+
+                                    $cmd = static::buildTimeoutCommand(300, "$php $artisan $commandName --no-interaction 2>&1");
+
+                                    $output = [];
+
+                                    $exitCode = 0;
+
+                                    exec($cmd, $output, $exitCode);
+                                }
 
                                 if ($exitCode === 124) {
                                     throw new RuntimeException('Installation timed out after 5 minutes.');

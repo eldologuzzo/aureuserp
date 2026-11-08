@@ -21,6 +21,7 @@ use Webkul\Security\Policies\RolePolicy;
 use Webkul\Support\Database\Dialects\DatabaseDialect;
 use Webkul\Support\Database\Dialects\MySqlDialect;
 use Webkul\Support\Database\Dialects\PostgresDialect;
+use Webkul\Support\Database\Dialects\SqliteDialect;
 use Webkul\Support\Http\Controllers\CompanyContextController;
 use Webkul\Support\Livewire\QuickNavigation;
 use Webkul\Support\Services\CompanyContext;
@@ -176,9 +177,10 @@ class SupportServiceProvider extends PackageServiceProvider
             return match ($driver) {
                 'pgsql'            => new PostgresDialect,
                 'mysql', 'mariadb' => new MySqlDialect,
+                'sqlite'           => new SqliteDialect,
                 default            => throw new RuntimeException(
                     "No DatabaseDialect implementation is registered for the [{$driver}] database driver. ".
-                    'Supported drivers: mysql, mariadb, pgsql.'
+                    'Supported drivers: mysql, mariadb, pgsql, sqlite.'
                 ),
             };
         });

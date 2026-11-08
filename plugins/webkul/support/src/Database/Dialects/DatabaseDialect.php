@@ -3,7 +3,7 @@
 namespace Webkul\Support\Database\Dialects;
 
 /**
- * Central point for SQL that MySQL and PostgreSQL express differently.
+ * Central point for SQL that database drivers express differently.
  *
  * Resolved via the container (see `db_dialect()`) so call sites never branch
  * on `DB::connection()->getDriverName()` themselves — add a method here
@@ -21,6 +21,12 @@ interface DatabaseDialect
      * for GROUP BY month reporting queries.
      */
     public function monthBucket(string $column): string;
+
+    /**
+     * SQL expression that formats a timestamp column into an ISO 'YYYY-Www' bucket string,
+     * for GROUP BY week reporting queries.
+     */
+    public function weekBucket(string $column): string;
 
     /**
      * Change a column's underlying type.

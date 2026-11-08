@@ -16,6 +16,11 @@ class PostgresDialect implements DatabaseDialect
         return "to_char({$column}, 'YYYY-MM')";
     }
 
+    public function weekBucket(string $column): string
+    {
+        return "to_char({$column}, 'IYYY-\"W\"IW')";
+    }
+
     public function alterColumnType(string $table, string $column, string $blueprintMethod, string $postgresType, string $postgresUsing): void
     {
         DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE {$postgresType} USING {$postgresUsing}");

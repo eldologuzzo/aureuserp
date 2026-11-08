@@ -244,7 +244,7 @@ trait ManagesOpportunityKanbanCards
             }
 
             $query->where(fn (Builder $query): Builder => $query
-                ->whereRaw("COALESCE({$this->kanbanColumnKeyExpression()}, 'none') != ?", [$columnValue])
+                ->whereRaw("COALESCE({$this->kanbanColumnKeyExpression()}, 'none') != ?", [(string) $columnValue])
                 ->orWhere(fn (Builder $query): Builder => $query->activityState($state)));
         }
 

@@ -14,7 +14,7 @@ return [
      |
      */
 
-    'enabled'         => env('DEBUGBAR_ENABLED', null),
+    'enabled'         => env('DEBUGBAR_ENABLED', function_exists('nativephp_call') ? false : null),
     'hide_empty_tabs' => true, // Hide tabs until they have content
     'except'          => [
         'telescope*',

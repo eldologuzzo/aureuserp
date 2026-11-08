@@ -1,5 +1,7 @@
 <?php
 
+ini_set('memory_limit', '256M');
+
 use App\Http\Middleware\SetLocale;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;

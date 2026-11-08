@@ -5,15 +5,18 @@ namespace Webkul\Crm\Filament\Support;
 use Filament\Navigation\NavigationItem;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Collection;
+use WeakMap;
 use Webkul\Crm\Models\Lead;
 
 class SimilarLeads
 {
-    protected static array $counts = [];
+    protected static ?WeakMap $counts = null;
 
     public static function count(Lead $record): int
     {
-        return static::$counts[$record->getKey()] ??= static::visibleRecords($record)->count();
+        static::$counts ??= new WeakMap;
+
+        return static::$counts[$record] ??= static::visibleRecords($record)->count();
     }
 
     public static function visibleRecords(Lead $record): Collection
@@ -27,7 +30,9 @@ class SimilarLeads
 
     public static function forgetCount(Lead $record): void
     {
-        unset(static::$counts[$record->getKey()]);
+        static::$counts ??= new WeakMap;
+
+        unset(static::$counts[$record]);
     }
 
     public static function navigationItems(Page $page, string $similarPage): array

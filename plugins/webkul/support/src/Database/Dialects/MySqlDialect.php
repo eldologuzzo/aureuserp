@@ -17,6 +17,11 @@ class MySqlDialect implements DatabaseDialect
         return "DATE_FORMAT({$column}, '%Y-%m')";
     }
 
+    public function weekBucket(string $column): string
+    {
+        return "DATE_FORMAT({$column}, '%x-W%v')";
+    }
+
     public function alterColumnType(string $table, string $column, string $blueprintMethod, string $postgresType, string $postgresUsing): void
     {
         Schema::table($table, function (Blueprint $blueprint) use ($column, $blueprintMethod) {

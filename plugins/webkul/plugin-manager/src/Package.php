@@ -3,11 +3,13 @@
 namespace Webkul\PluginManager;
 
 use Exception;
+use Illuminate\Foundation\Providers\ConsoleSupportServiceProvider;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 use Spatie\LaravelPackageTools\Package as BasePackage;
+use Spatie\LaravelSettings\Console\ClearCachedSettingsCommand;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Throwable;
@@ -147,7 +149,12 @@ class Package extends BasePackage
 
     public function updateOrCreate(): Plugin
     {
-        $composerPath = $this->basePath('../composer.json');
+        $composerPath = $this->basePath('composer.json');
+
+        if (! is_file($composerPath)) {
+            $composerPath = $this->basePath('../composer.json');
+        }
+
         $composerData = json_decode(file_get_contents($composerPath), true);
 
         $this->plugin = Plugin::updateOrCreate([
@@ -226,10 +233,34 @@ class Package extends BasePackage
 
     protected static function optimizeInFreshProcess(): void
     {
+        if (static::isEmbeddedMobileRuntime()) {
+            Artisan::call('optimize');
+
+            return;
+        }
+
         Process::path(base_path())
             ->timeout(300)
             ->run([static::phpBinaryPath(), 'artisan', 'optimize'])
             ->throw();
+    }
+
+    public static function registerEmbeddedConsoleCommands(): void
+    {
+        app()->register(ConsoleSupportServiceProvider::class);
+
+        Artisan::registerCommand(app(ClearCachedSettingsCommand::class));
+
+        foreach (Plugin::query()->get() as $plugin) {
+            foreach ($plugin->package?->consoleCommands ?? [] as $command) {
+                Artisan::registerCommand($command);
+            }
+        }
+    }
+
+    public static function isEmbeddedMobileRuntime(): bool
+    {
+        return function_exists('nativephp_call');
     }
 
     public static function phpBinaryPath(): string

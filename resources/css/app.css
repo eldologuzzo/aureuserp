@@ -1,4 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+
+@source "../../app";
+@source "../../resources";
+@source "../../plugins/webkul/point-of-sale/resources";
 
 /* ==========================================================================
    RTL/LTR Support - Global Styles

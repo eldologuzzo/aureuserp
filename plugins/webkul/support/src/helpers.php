@@ -79,15 +79,19 @@ if (! function_exists('money')) {
             $amount /= $divideBy;
         }
 
-        if (SupportServiceProvider::isRtl()) {
-            return Number::currency($amount, $currency, 'en');
-        }
+        try {
+            if (SupportServiceProvider::isRtl()) {
+                return Number::currency($amount, $currency, 'en');
+            }
 
-        if (! str_contains($locale, '-u-nu-')) {
-            $locale .= '-u-nu-latn';
-        }
+            if (! str_contains($locale, '-u-nu-')) {
+                $locale .= '-u-nu-latn';
+            }
 
-        return Number::currency($amount, $currency, $locale);
+            return Number::currency($amount, $currency, $locale);
+        } catch (IntlException) {
+            return number_format($amount, 2).' '.$currency;
+        }
     }
 
     if (! function_exists('random_color')) {
@@ -486,15 +490,21 @@ if (! function_exists('compact_money')) {
 
         if (SupportServiceProvider::isRtl()) {
             $locale = 'en';
-        } elseif (! str_contains($locale, '-u-nu-')) {
+        }
+
+        if (! str_contains($locale, '-u-nu-')) {
             $locale .= '-u-nu-latn';
         }
 
-        $formatted = MessageFormatter::formatMessage(
-            $locale,
-            '{0, number, :: compact-short currency/'.$currency.'}',
-            [$amount],
-        );
+        try {
+            $formatted = MessageFormatter::formatMessage(
+                $locale,
+                '{0, number, :: compact-short currency/'.$currency.'}',
+                [$amount],
+            );
+        } catch (IntlException) {
+            return money($amount, $currency);
+        }
 
         return $formatted !== false ? $formatted : money($amount, $currency);
     }

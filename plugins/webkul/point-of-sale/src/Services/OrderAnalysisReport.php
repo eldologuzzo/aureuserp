@@ -49,8 +49,8 @@ class OrderAnalysisReport
     protected function groupExpression(string $groupBy): string
     {
         return match ($groupBy) {
-            'month' => "DATE_FORMAT(ordered_at, '%Y-%m')",
-            'week'  => "DATE_FORMAT(ordered_at, '%x-W%v')",
+            'month' => db_dialect()->monthBucket('ordered_at'),
+            'week'  => db_dialect()->weekBucket('ordered_at'),
             default => 'DATE(ordered_at)',
         };
     }

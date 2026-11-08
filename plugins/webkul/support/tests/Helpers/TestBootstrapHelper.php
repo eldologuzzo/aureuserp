@@ -76,14 +76,18 @@ class TestBootstrapHelper
             }
         });
 
-        static::restartTestTransaction();
-
         static::bootInstalledPluginProviders();
     }
 
     private static function onCommittedConnection(callable $callback): void
     {
         $default = config('database.default');
+        $testConnection = DB::connection();
+        $restartTestTransaction = $testConnection->transactionLevel() > 0;
+
+        if ($restartTestTransaction) {
+            $testConnection->rollBack();
+        }
 
         config(['database.connections.'.self::BOOTSTRAP_CONNECTION => config("database.connections.{$default}")]);
 
@@ -95,17 +99,10 @@ class TestBootstrapHelper
             $callback();
         } finally {
             config(['database.default' => $default]);
-        }
-    }
 
-    private static function restartTestTransaction(): void
-    {
-        $connection = DB::connection();
-
-        if ($connection->transactionLevel() > 0) {
-            $connection->rollBack();
-
-            $connection->beginTransaction();
+            if ($restartTestTransaction) {
+                $testConnection->beginTransaction();
+            }
         }
     }
 
@@ -287,42 +284,64 @@ class TestBootstrapHelper
     {
         $token = env('TEST_TOKEN');
 
-        if (blank($token)) {
-            return;
-        }
-
         $default = config('database.default');
 
         $connection = config("database.connections.{$default}");
 
-        $workerDatabase = $connection['database'].'_p'.$token;
+        if ($connection['driver'] === 'sqlite') {
+            $workerDatabase = $connection['database'] === ':memory:'
+                ? database_path('testing.sqlite')
+                : $connection['database'];
 
-        if ($connection['driver'] === 'pgsql') {
-            $pdo = new PDO(
-                "pgsql:host={$connection['host']};port={$connection['port']};dbname={$connection['database']}",
-                $connection['username'],
-                $connection['password'],
-            );
+            if (preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $workerDatabase) !== 1) {
+                $workerDatabase = base_path($workerDatabase);
+            }
 
-            $exists = $pdo->query('SELECT 1 FROM pg_database WHERE datname = '.$pdo->quote($workerDatabase))->fetchColumn();
+            if (filled($token)) {
+                $workerDatabase .= '_p'.$token;
+            }
 
-            if (! $exists) {
-                try {
-                    $pdo->exec('CREATE DATABASE "'.$workerDatabase.'"');
-                } catch (PDOException $e) {
-                    if (! str_contains($e->getMessage(), 'already exists')) {
-                        throw $e;
-                    }
-                }
+            if (! is_dir(dirname($workerDatabase))) {
+                mkdir(dirname($workerDatabase), 0755, true);
+            }
+
+            if (! file_exists($workerDatabase)) {
+                touch($workerDatabase);
             }
         } else {
-            $pdo = new PDO(
-                "mysql:host={$connection['host']};port={$connection['port']}",
-                $connection['username'],
-                $connection['password'],
-            );
+            if (blank($token)) {
+                return;
+            }
 
-            $pdo->exec('CREATE DATABASE IF NOT EXISTS `'.$workerDatabase."` CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci'");
+            $workerDatabase = $connection['database'].'_p'.$token;
+
+            if ($connection['driver'] === 'pgsql') {
+                $pdo = new PDO(
+                    "pgsql:host={$connection['host']};port={$connection['port']};dbname={$connection['database']}",
+                    $connection['username'],
+                    $connection['password'],
+                );
+
+                $exists = $pdo->query('SELECT 1 FROM pg_database WHERE datname = '.$pdo->quote($workerDatabase))->fetchColumn();
+
+                if (! $exists) {
+                    try {
+                        $pdo->exec('CREATE DATABASE "'.$workerDatabase.'"');
+                    } catch (PDOException $e) {
+                        if (! str_contains($e->getMessage(), 'already exists')) {
+                            throw $e;
+                        }
+                    }
+                }
+            } else {
+                $pdo = new PDO(
+                    "mysql:host={$connection['host']};port={$connection['port']}",
+                    $connection['username'],
+                    $connection['password'],
+                );
+
+                $pdo->exec('CREATE DATABASE IF NOT EXISTS `'.$workerDatabase."` CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci'");
+            }
         }
 
         config(["database.connections.{$default}.database" => $workerDatabase]);
@@ -335,7 +354,9 @@ class TestBootstrapHelper
 
         $_SERVER['DB_DATABASE'] = $workerDatabase;
 
-        static::ensureWorkerViewPath($token);
+        if (filled($token)) {
+            static::ensureWorkerViewPath($token);
+        }
     }
 
     private static function ensureWorkerViewPath(string $token): void
